@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Igris — Solo System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <h1>[ SYSTEM ]</h1>
+  <div class="sep"></div>
+  <span id="apiStatus" class="status-tag">OFFLINE</span>
+  
+  <!-- HP/MP Stats representations from sketch 005 -->
+  <div class="sep"></div>
+  <div class="status-bar-container">
+    <span class="status-bar-label">HP:</span>
+    <div class="status-bar" title="System Status Indicator">
+      <div id="hpFill" class="fill hp" style="width: 100%;"></div>
+    </div>
+  </div>
+  <div class="status-bar-container">
+    <span class="status-bar-label">MP:</span>
+    <div class="status-bar" title="VRAM Usage Indicator">
+      <div id="mpFill" class="fill mp" style="width: 0%;"></div>
+    </div>
+  </div>
+  
+  <div class="sep"></div>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#555;">RTX 3090 · qwen2.5-coder:32b</span>
+</div>
+
+<div class="main-grid">
+
+  <!-- CHAT / LOG WINDOW -->
+  <div class="chat-zone">
+    <div class="chat-messages" id="msgs">
+      <div class="sys-msg">
+        <div class="sys-header">
+          <span class="sys-badge system">SYSTEM</span>
+          <span class="sys-time">12:00:00</span>
+        </div>
+        <div class="sys-body">
+          <span class="highlight">[ Systemaktivering ]</span><br>
+          Igris-kärnan ansluter... Vänligen ställ in din API-token vid behov.<br>
+          Model: <code>qwen2.5-coder:32b</code> · VRAM: Hårdvarumonitorering aktiv.<br>
+          Status: <span id="syncText" style="color:var(--gold);">INITIARAR</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-wrap">
+      <div class="chat-input-row">
+        <input type="text" placeholder="Ange kommando eller prompt..." id="chatIn">
+        <button id="sendBtn">EXECUTE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="side-panel">
+
+    <!-- Player Stats (William) -->
+    <div class="side-section">
+      <div class="side-section-header">
+        <span>◆ Spelare: William</span>
+        <span style="color:var(--gold);">LV. 23</span>
+      </div>
+      <div class="side-section-body">
+        <div class="stat-block">
+          <div class="stat-row"><span>STR</span><span class="stat-val">85</span><span class="stat-up">▲2</span></div>
+          <div class="stat-row"><span>AGI</span><span class="stat-val">72</span><span class="stat-up">▲1</span></div>
+          <div class="stat-row"><span>INT</span><span class="stat-val">91</span><span class="stat-down">▼1</span></div>
+          <div class="stat-row"><span>PER</span><span class="stat-val">78</span></div>
+          <div class="stat-row" style="border:none;margin-top:8px;">
+            <span>EXP</span>
+            <span class="stat-val" style="color:var(--system-blue);">2,340 / 5,000</span>
+          </div>
+          <div class="gpu-bar" style="margin-top:4px;">
+            <div class="gpu-fill" style="width:47%;background:var(--system-violet);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Quests (Pending/Running Tasks) -->
+    <div class="side-section">
+      <div class="side-section-header">
+        <span>◆ Quest-logg</span>
+        <span id="questCount" style="color:var(--text-dim);font-size:9px;">0 aktiva</span>
+      </div>
+      <div class="side-section-body" id="questList">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);text-align:center;padding:10px 0;">
+          Inga aktiva uppdrag
+        </div>
+      </div>
+    </div>
+
+    <!-- Shadow Army (Active Agents list) -->
+    <div class="side-section">
+      <div class="side-section-header">
+        <span>◆ Shadow Army</span>
+        <span id="agentCount" style="color:var(--text-dim);font-size:9px;">0 online</span>
+      </div>
+      <div class="side-section-body" id="agentList">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);text-align:center;padding:10px 0;">
+          Inga skuggagenter hittades
+        </div>
+      </div>
+    </div>
+
+    <!-- GPU Telemetry & VRAM info -->
+    <div class="side-section">
+      <div class="side-section-header">
+        <span>◆ Systemresurser</span>
+      </div>
+      <div class="side-section-body">
+        <div class="gpu-stat"><span>VRAM</span><span id="vramText">0.0 / 24.0 GB</span></div>
+        <div class="gpu-bar"><div id="vramBar" class="gpu-fill"></div></div>
+        <div class="gpu-stat" style="margin-top:8px;"><span>GPU Temp</span><span id="gpuTemp">0°C</span></div>
+        <div class="gpu-stat"><span>GPU Load</span><span id="gpuLoad">0%</span></div>
+        <div class="gpu-stat"><span>OOM Risk</span><span id="oomRisk" style="color:var(--green);font-weight:bold;">LOW</span></div>
+      </div>
+    </div>
+
+    <!-- Token configuration settings -->
+    <div class="side-section">
+      <div class="side-section-header">
+        <span>◆ Systeminställningar</span>
+      </div>
+      <div class="side-section-body">
+        <div class="stat-block">
+          <div class="gpu-stat"><span>API TOKEN</span></div>
+          <div class="token-config-row">
+            <input type="password" id="tokenInput" value="igris-dev-token">
+            <button id="saveToken">SPARA</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module" src="/assets/app.js"></script>
+</body>
+</html>

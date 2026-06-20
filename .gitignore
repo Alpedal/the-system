@@ -6,19 +6,28 @@
 *.key
 secrets/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.bak
+.venv/
+*.venv/
+venv/
+
 # Beroenden
 node_modules/
 .pnpm-store/
-__pycache__/
-*.pyc
-.venv/
-venv/
+*.tsbuildinfo
 
 # Byggfiler
 .next/
 dist/
 build/
-*.tsbuildinfo
+
+# External git repos (embedded — don't track)
+external/
 
 # IDE
 .vscode/
@@ -40,3 +49,6 @@ obsidian/.obsidian/workspace-mobile.json
 
 # Docker
 docker-data/
+
+# Generated/auto dirs
+.igris/

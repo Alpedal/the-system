@@ -68,21 +68,31 @@ class GPUManager:
     def __init__(self) -> None:
         if self._initialized:
             return
-        self._initialized = True
+        self._nvml_available = False
+        self._custom_allocations: dict[str, GPUAllocation] = {}
 
-        pynvml.nvmlInit()
-        self._device_count = pynvml.nvmlDeviceGetCount()
-        if self._device_count == 0:
-            raise RuntimeError("No NVIDIA GPU detected")
-        self._handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        gpu_name = pynvml.nvmlDeviceGetName(self._handle)
-        if isinstance(gpu_name, bytes):
-            gpu_name = gpu_name.decode("utf-8")
+        gpu_name = "NVIDIA GeForce RTX 3090"
+        total_mem_gb = 24.0
+        try:
+            pynvml.nvmlInit()
+            self._device_count = pynvml.nvmlDeviceGetCount()
+            if self._device_count == 0:
+                raise RuntimeError("No NVIDIA GPU detected")
+            self._handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            nvml_name = pynvml.nvmlDeviceGetName(self._handle)
+            if isinstance(nvml_name, bytes):
+                nvml_name = nvml_name.decode("utf-8")
+            gpu_name = nvml_name
+            total_mem = pynvml.nvmlDeviceGetMemoryInfo(self._handle).total
+            total_mem_gb = total_mem / (1024**3)
+            self._nvml_available = True
+        except Exception:
+            # Keep Igris operational when NVML is unavailable or denied by the host.
+            self._device_count = 0
 
-        total_mem = pynvml.nvmlDeviceGetMemoryInfo(self._handle).total
         self.hardware = HardwareProfile(
             gpu_name=gpu_name,
-            gpu_vram_gb=total_mem / (1024**3),
+            gpu_vram_gb=total_mem_gb,
             allocations=list(DEFAULT_ALLOCATIONS),
             ram_allocations=[
                 RAMAllocation(
@@ -94,13 +104,23 @@ class GPUManager:
                 ),
             ],
         )
-
-        self._custom_allocations: dict[str, GPUAllocation] = {}
+        self._initialized = True
 
     # ─── snapshot ─────────────────────────────────────────────────────────
 
     def snapshot(self) -> VRAMSnapshot:
         """Return current VRAM state from nvidia-ml-py."""
+        if not self._nvml_available:
+            used_gb = min(self.total_allocated_gb, self.hardware.gpu_vram_gb)
+            free_gb = max(self.hardware.gpu_vram_gb - used_gb, 0.0)
+            return VRAMSnapshot(
+                total_gb=self.hardware.gpu_vram_gb,
+                used_gb=used_gb,
+                free_gb=free_gb,
+                utilization_pct=0.0,
+                temperature_c=0,
+            )
+
         mem = pynvml.nvmlDeviceGetMemoryInfo(self._handle)
         util = pynvml.nvmlDeviceGetUtilizationRates(self._handle)
         temp = pynvml.nvmlDeviceGetTemperature(self._handle, pynvml.NVML_TEMPERATURE_GPU)

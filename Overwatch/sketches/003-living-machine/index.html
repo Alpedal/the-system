@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Igris — Living Machine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #06060c;
+    color: #e3e3e4;
+    -webkit-font-smoothing: antialiased;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Ambient canvas background */
+  #bgCanvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* UI layer */
+  .ui-layer {
+    position: relative; z-index: 1;
+    height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* Top bar — minimal */
+  .topbar {
+    display: flex; align-items: center;
+    padding: 16px 24px;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  .topbar h1 {
+    font-size: 20px; font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px;
+    background: #44ff44;
+    border-radius: 2px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+  .live-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: #44ff44;
+    letter-spacing: 0.1em;
+  }
+
+  /* Agent rings */
+  .agent-rings {
+    display: flex; gap: 12px;
+    margin-left: auto;
+    align-items: center;
+  }
+  .agent-ring {
+    position: relative;
+    width: 44px; height: 44px;
+    cursor: pointer;
+  }
+  .agent-ring canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .agent-ring-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 500;
+    color: #e3e3e4;
+    pointer-events: none;
+  }
+
+  /* Main area — chat centered */
+  .main-area {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .messages {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 0;
+    display: flex; flex-direction: column;
+    gap: 20px;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+  }
+  .msg {
+    animation: msgIn 0.4s ease;
+  }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: #666;
+    margin-bottom: 6px;
+    display: flex; gap: 8px;
+    align-items: center;
+  }
+  .msg-meta .dot {
+    width: 4px; height: 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .msg-body {
+    font-size: 15px; line-height: 1.7;
+    color: #c8c8cc;
+    padding-left: 4px;
+    border-left: 1px solid rgba(227,227,228,0.06);
+  }
+  .msg-body strong { color: #e3e3e4; }
+  .msg-body code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: rgba(0,0,0,0.4);
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: #00d4ff;
+    border: 1px solid rgba(0,212,255,0.08);
+  }
+  .msg.user .msg-body {
+    border-left-color: rgba(0,212,255,0.2);
+  }
+
+  /* Input */
+  .input-zone {
+    width: 100%;
+    padding: 20px 0;
+    flex-shrink: 0;
+  }
+  .input-wrap {
+    display: flex;
+    background: rgba(18,18,30,0.8);
+    border: 1px solid rgba(227,227,228,0.06);
+    border-radius: 3px;
+    padding: 4px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: border-color 0.2s;
+  }
+  .input-wrap:focus-within {
+    border-color: #00d4ff;
+    box-shadow: 0 0 40px rgba(0,212,255,0.04);
+  }
+  .input-wrap input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #e3e3e4;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 12px 16px;
+    outline: none;
+  }
+  .input-wrap input::placeholder { color: #444; }
+  .input-wrap button {
+    background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.1);
+    color: #00d4ff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .input-wrap button:hover { background: rgba(0,212,255,0.14); }
+
+  /* GPU bar — bottom */
+  .gpu-strip {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 24px;
+    border-top: 1px solid rgba(227,227,228,0.04);
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .gpu-strip .gpu-label { color: #666; }
+  .gpu-strip .gpu-value { color: #e3e3e4; }
+  .gpu-strip-bar {
+    flex: 1; max-width: 200px;
+    height: 2px;
+    background: rgba(227,227,228,0.06);
+    border-radius: 2px; overflow: hidden;
+  }
+  .gpu-strip-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4ff, #44ff44);
+    border-radius: 2px;
+    width: 79%;
+    transition: width 0.8s;
+  }
+
+  @media (max-width: 600px) {
+    .agent-rings { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="ui-layer">
+  <div class="topbar">
+    <div class="pulse-dot"></div>
+    <h1>Igris</h1>
+    <span class="live-tag">LIVE</span>
+    <div class="agent-rings">
+      <div class="agent-ring" data-agent="Igris">
+        <canvas width="44" height="44"></canvas>
+        <div class="agent-ring-label">I</div>
+      </div>
+      <div class="agent-ring" data-agent="Gemini">
+        <canvas width="44" height="44"></canvas>
+        <div class="agent-ring-label">G</div>
+      </div>
+      <div class="agent-ring" data-agent="Claude">
+        <canvas width="44" height="44"></canvas>
+        <div class="agent-ring-label">C</div>
+      </div>
+      <div class="agent-ring" data-agent="Hermes">
+        <canvas width="44" height="44"></canvas>
+        <div class="agent-ring-label">H</div>
+      </div>
+      <div class="agent-ring" data-agent="Antigravity">
+        <canvas width="44" height="44"></canvas>
+        <div class="agent-ring-label">A</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="messages" id="messages3">
+      <div class="msg">
+        <div class="msg-meta"><span class="dot" style="background:#ffd700;"></span> Igris · 14:32:01</div>
+        <div class="msg-body">System online. <code>qwen2.5-coder:32b</code> laddad på RTX 3090. 5 agenter aktiva. Status grön över alla noder. Redo för uppgift.</div>
+      </div>
+      <div class="msg user">
+        <div class="msg-meta"><span class="dot" style="background:#00d4ff;"></span> You · 14:32:15</div>
+        <div class="msg-body">Bygg en login-sida i React med Tailwind.</div>
+      </div>
+      <div class="msg">
+        <div class="msg-meta"><span class="dot" style="background:#ffd700;"></span> Igris · 14:32:18</div>
+        <div class="msg-body">
+          <strong>Routing:</strong> Research → <code>Gemini</code>. Implementation → <code>Claude Code</code>.<br>
+          Gemini analyserar. Svar om ~12s. Claude står i kö (pos 1).
+        </div>
+      </div>
+    </div>
+
+    <div class="input-zone">
+      <div class="input-wrap">
+        <input type="text" placeholder="Skriv till Igris..." id="chatInput3">
+        <button onclick="sendMsg3()">SEND</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="gpu-strip">
+    <span class="gpu-label">VRAM</span>
+    <span class="gpu-value">19.2 / 24 GB</span>
+    <div class="gpu-strip-bar"><div class="gpu-strip-fill"></div></div>
+    <span class="gpu-label">GPU</span>
+    <span class="gpu-value">82% · 67°C</span>
+    <span class="gpu-label" style="margin-left:auto;">qwen2.5-coder:32b · Uptime 4h 22m</span>
+  </div>
+</div>
+
+<script>
+// Ambient background — subtle noise particles
+const bg = document.getElementById('bgCanvas');
+const ctx = bg.getContext('2d');
+let particles = [];
+
+function resizeBg() {
+  bg.width = window.innerWidth;
+  bg.height = window.innerHeight;
+}
+resizeBg();
+window.addEventListener('resize', resizeBg);
+
+// Init particles
+const PARTICLE_COUNT = 60;
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles.push({
+    x: Math.random() * bg.width,
+    y: Math.random() * bg.height,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: (Math.random() - 0.5) * 0.15,
+    size: Math.random() * 1.5 + 0.3,
+    opacity: Math.random() * 0.3 + 0.05,
+  });
+}
+
+function drawBg() {
+  ctx.clearRect(0, 0, bg.width, bg.height);
+
+  // Draw connections between nearby particles
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 180) {
+        const alpha = (1 - dist / 180) * 0.06;
+        ctx.strokeStyle = `rgba(0,212,255,${alpha})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw particles
+  for (const p of particles) {
+    ctx.fillStyle = `rgba(0,212,255,${p.opacity})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Update positions
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0) p.x = bg.width;
+    if (p.x > bg.width) p.x = 0;
+    if (p.y < 0) p.y = bg.height;
+    if (p.y > bg.height) p.y = 0;
+  }
+
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// Agent ring animations
+const ringColors = {
+  Igris: '#ffd700',
+  Gemini: '#44ff44',
+  Claude: '#00d4ff',
+  Hermes: '#ff4444',
+  Antigravity: '#888',
+};
+
+document.querySelectorAll('.agent-ring').forEach(ring => {
+  const agent = ring.dataset.agent;
+  const canvas = ring.querySelector('canvas');
+  const rctx = canvas.getContext('2d');
+  const color = ringColors[agent] || '#00d4ff';
+  let angle = Math.random() * Math.PI * 2;
+  let speed = 0.3 + Math.random() * 0.5;
+
+  function drawRing() {
+    rctx.clearRect(0, 0, 44, 44);
+    const cx = 22, cy = 22, r = 17;
+
+    // Background ring
+    rctx.strokeStyle = 'rgba(227,227,228,0.06)';
+    rctx.lineWidth = 1.5;
+    rctx.beginPath();
+    rctx.arc(cx, cy, r, 0, Math.PI * 2);
+    rctx.stroke();
+
+    // Active arc
+    const arcLen = 0.6 + Math.sin(Date.now() * 0.001 * speed) * 0.2;
+    rctx.strokeStyle = color;
+    rctx.lineWidth = 2;
+    rctx.beginPath();
+    rctx.arc(cx, cy, r, angle, angle + Math.PI * 2 * arcLen);
+    rctx.stroke();
+
+    // Glow dot
+    const gx = cx + Math.cos(angle) * r;
+    const gy = cy + Math.sin(angle) * r;
+    rctx.fillStyle = color;
+    rctx.shadowColor = color;
+    rctx.shadowBlur = 6;
+    rctx.beginPath();
+    rctx.arc(gx, gy, 2.5, 0, Math.PI * 2);
+    rctx.fill();
+    rctx.shadowBlur = 0;
+
+    angle += 0.008 * speed;
+    requestAnimationFrame(drawRing);
+  }
+  drawRing();
+});
+
+// Chat
+function sendMsg3() {
+  const input = document.getElementById('chatInput3');
+  const text = input.value.trim();
+  if (!text) return;
+  const container = document.getElementById('messages3');
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  const now = new Date().toTimeString().slice(0,8);
+  div.innerHTML = '<div class="msg-meta"><span class="dot" style="background:#00d4ff;"></span> You · '+now+'</div><div class="msg-body">'+text+'</div>';
+  container.appendChild(div);
+  input.value = '';
+  container.scrollTop = container.scrollHeight;
+}
+document.getElementById('chatInput3').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendMsg3();
+});
+</script>
+</body>
+</html>

@@ -28,7 +28,7 @@ DATOR 1 (LLM-server)                 DATOR 2 (William)              DATOR 3 (Vä
        │                                     │                              │
        │         GitHub (privat repo)        │                              │
        └─────────────────────────────────────┴──────────────────────────────┘
-                     ↑ pull/push var 5:e minut (cron)
+                     ↑ pull var 5:e minut (cron)
 ```
 
 **Dataflöde:**
@@ -38,9 +38,9 @@ DATOR 1 (LLM-server)                 DATOR 2 (William)              DATOR 3 (Vä
 4. Användaren ser svaret
 
 **Synkflöde:**
-1. William ändrar en fil i `obsidian/` på sin dator
-2. Cron-script (var 5:e minut) → `git add` → `git commit` → `git push` till GitHub
-3. Väns dator (cron, var 5:e minut) → `git pull` → filen dyker upp lokalt
+1. Alpe gör ändringar på branch `alpe/feature` → pushar → öppnar PR
+2. William granskar PR:n → godkänner → merge till main
+3. Alla tre datorers cron (var 5:e minut) → `git pull origin main --rebase` → ändringarna dyker upp lokalt
 4. Samma sak åt andra hållet
 
 ---
@@ -56,7 +56,7 @@ hosted-aios/
 │   │
 ├── users/           ← PERSONLIGA MAPPAR. En per person.
 │   ├── william/     ← Williams bots, skills, minnen, arbetsfiler
-│   ├── user2/       ← Nästa persons
+│   ├── Alpe/        ← Alpes bots, skills, minnen
 │   └── user3/       ← Tredje personens
 │   │
 │   │   Varje användarmapp innehåller:
@@ -116,15 +116,16 @@ Systemet har sex AI-bottar. Varje bot har en specifik roll. Ingen bot gör allt.
 
 **Problem:** Tre personer ändrar filer på tre olika datorer. Hur ser alla alltid samma sak?
 
-**Lösning:** GitHub (privat repo) + cron-synk var 5:e minut.
+**Lösning:** GitHub (privat repo) + branch/PR-workflow + cron-pull var 5:e minut.
 
-### Vattentäta regler
+### Flawless-regler (branch + PR + skyddad main)
 
-1. **Pull före push.** Alltid. Inga undantag.
-2. **Vid konflikt → spara BÅDA versionerna.** En fil döps om till `filnamn.md.CONFLICT-2026-06-20-143022.md`. Ingenting raderas.
-3. **Aldrig force push.** `git push --force` är förbjudet. Det skriver över andras arbete.
-4. **Allt loggas.** Varje synk-operation skrivs till `shared/memory/sync-log.md`.
-5. **Stash-skydd.** Före varje pull sparas osparade ändringar i en stash. Efter pull återställs de.
+1. **Main är skyddad.** Ingen pushar direkt till main — varken människa eller bot.
+2. **Alla ändringar → feature branch → PR → merge.** Ex: `alpe/rename-user2` → PR → William godkänner → merge.
+3. **Cron gör ENDAST pull.** `git pull origin main --rebase`. Aldrig commit, aldrig push.
+4. **Vid merge-konflikt i PR → lös lokalt, uppdatera PR.** Inga .CONFLICT-filer.
+5. **Aldrig force push.** `git push --force` är blockat av branch protection.
+6. **Allt loggas.** Varje pull-operation skrivs till `shared/memory/sync-log.md`.
 
 ### Vad som synkas
 - **Allt i `hosted-aios/` utom:**

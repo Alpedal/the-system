@@ -80,7 +80,7 @@ hosted-aios/
 │   │   ├── memory/                    ← Williams bot-minnen
 │   │   └── work/                      ← Williams pågående arbete
 │   │
-│   ├── user2/                         ← Samma struktur
+│   ├── Alpe/                          ← Samma struktur
 │   │   ├── README.md
 │   │   ├── bots/
 │   │   ├── skills/
@@ -142,7 +142,7 @@ hosted-aios/
 │   ├── 05-building/                   ← Byggloggar, status
 │   ├── 06-personal/                   ← Personliga anteckningar (undermapp/user)
 │   │   ├── william/
-│   │   ├── user2/
+│   │   ├── Alpe/
 │   │   └── user3/
 │   └── templates/                     ← Obsidian-mallar
 │

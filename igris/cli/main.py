@@ -2,10 +2,10 @@
 CLI entry point for Commander Igris.
 
 Usage:
-  python -m igris.cli.main chat [data_dir]       # Enhanced interactive chat (NEW)
-  python -m igris.cli.main run [data_dir]         # Start orchestrator loop
-  python -m igris.cli.main status [data_dir]      # Print system status
-  python -m igris.cli.main validate               # Validate all contracts
+  python -m igris.cli.main            # Direct Chat (default)
+  python -m igris.cli.main run        # Direct Chat
+  python -m igris.cli.main status     # Print system status
+  python -m igris.cli.main validate   # Validate contracts
 """
 
 from __future__ import annotations
@@ -13,25 +13,18 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Ensure the igris package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
-def cmd_run(data_dir: str = "data", interval: int = 30) -> None:
-    """Start the Igris orchestrator loop."""
+def cmd_chat(data_dir: str = "data", interval: int = 5) -> None:
+    """Start Igris Direct Chat."""
     from igris.core.orchestrator import IgrisOrchestrator
     igris = IgrisOrchestrator(data_dir=Path(data_dir))
-    igris.run_loop(interval_s=interval)
-
-
-def cmd_chat(data_dir: str = "data", interval: int = 5) -> None:
-    """Start enhanced interactive chat with Igris."""
-    from igris.cli.chat import run_chat
-    run_chat(data_dir=data_dir, interval_s=interval)
+    igris.chat(interval_s=interval)
 
 
 def cmd_status(data_dir: str = "data") -> None:
-    """Print current system status and exit."""
+    """Print system status."""
     from igris.core.orchestrator import IgrisOrchestrator
     igris = IgrisOrchestrator(data_dir=Path(data_dir))
     igris._print_status()
@@ -43,11 +36,10 @@ def cmd_status(data_dir: str = "data") -> None:
     print(f"\nTasks ({len(igris.tasks)} total):")
     for task in igris.tasks.values():
         print(f"  {task.task_id}: [{task.priority.value}] {task.status.value} — {task.description[:60]}")
-    print(f"\nEvent log: {len(igris.event_log)} entries")
 
 
 def cmd_validate() -> None:
-    """Run validation against all contract schemas."""
+    """Validate all contracts."""
     from igris.core.contract_validator import ContractValidator, ContractType
     validator = ContractValidator()
     print("Contract Schema Registry:")
@@ -59,15 +51,15 @@ def cmd_validate() -> None:
         },
         ContractType.TASK_ASSIGN: {
             "contract_type": "task_assign", "sender_id": "test",
-            "payload": {"task_id": "task-0001", "agent_id": "agent-001", "description": "Test task"},
+            "payload": {"task_id": "t1", "agent_id": "a1", "description": "Test"},
         },
         ContractType.AGENT_PROMOTE: {
             "contract_type": "agent_promote", "sender_id": "test",
-            "payload": {"agent_id": "agent-001", "from_rank": "level_0", "to_rank": "b_rank", "reason": "test"},
+            "payload": {"agent_id": "a1", "from_rank": "level_0", "to_rank": "b_rank", "reason": "test"},
         },
         ContractType.HEARTBEAT: {
             "contract_type": "heartbeat", "sender_id": "test",
-            "payload": {"agent_id": "agent-001", "sequence": 0},
+            "payload": {"agent_id": "a1", "sequence": 0},
         },
     }
     all_ok = True
@@ -84,37 +76,19 @@ def cmd_validate() -> None:
     print(f"Overall: {'ALL PASSED' if all_ok else 'SOME FAILED'}")
 
 
-USAGE = """Usage: python -m igris.cli.main <command> [args]
-
-Commands:
-  chat [data_dir]       Enhanced interactive chat with Igris (NEW!)
-  run [data_dir]        Start orchestrator loop (verbose)
-  status [data_dir]     Print system status
-  validate              Validate all contracts
-"""
-
-
 def main() -> None:
-    if len(sys.argv) < 2:
-        print(USAGE)
-        sys.exit(1)
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "chat"
+    data_dir = sys.argv[2] if len(sys.argv) > 2 else "data"
 
-    cmd = sys.argv[1]
-
-    if cmd == "chat":
-        data_dir = sys.argv[2] if len(sys.argv) > 2 else "data"
+    if cmd in ("chat", "run"):
         cmd_chat(data_dir=data_dir)
-    elif cmd == "run":
-        data_dir = sys.argv[2] if len(sys.argv) > 2 else "data"
-        cmd_run(data_dir=data_dir)
     elif cmd == "status":
-        data_dir = sys.argv[2] if len(sys.argv) > 2 else "data"
         cmd_status(data_dir=data_dir)
     elif cmd == "validate":
         cmd_validate()
     else:
-        print(f"Unknown command: {cmd}")
-        print(USAGE)
+        print(f"Unknown: {cmd}")
+        print("Usage: python -m igris.cli.main [chat|status|validate]")
         sys.exit(1)
 
 

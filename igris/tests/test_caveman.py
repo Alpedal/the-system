@@ -34,7 +34,7 @@ class TestCavemanUltra:
         result = caveman.patch(str(temp_file), 'print("hello world")', 'print("hej världen")')
         assert result.success
         assert result.occurrences_replaced == 1
-        content = temp_file.read_text()
+        content = temp_file.read_text(encoding="utf-8")
         assert 'hej världen' in content
         assert 'hello world' not in content
 

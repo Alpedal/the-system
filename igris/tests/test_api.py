@@ -116,4 +116,4 @@ def test_web_index_is_served() -> None:
     client = make_client()
     response = client.get("/")
     assert response.status_code == 200
-    assert "Igris Overwatch Prototype" in response.text
+    assert "Igris — Solo System" in response.text

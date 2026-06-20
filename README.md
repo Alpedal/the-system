@@ -10,9 +10,9 @@ C:\LLM\
 ├── igris\                  # Huvudprojektet
 │   ├── core\               # Orchestrator, Contract Validator, GPU Manager
 │   ├── models\             # Agent, Task, HardwareProfile (Pydantic)
-│   ├── skills\             # 776 agent skills
+│   ├── skills\             # 781 agent skills
 │   │   ├── caveman.py      # Caveman Ultra — kirurgiska patchar
-│   │   ├── core\           # Caveman skills (7 st)
+│   │   ├── core\           # Caveman skills (10 st)
 │   │   ├── superpowers\    # Superpowers skills (14 st)
 │   │   ├── security\       # Cybersakerhetsskills (754 st)
 │   │   └── agents\         # Agent-definitioner (3 st)

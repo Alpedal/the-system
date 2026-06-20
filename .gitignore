@@ -16,5 +16,8 @@ external/
 .DS_Store
 Thumbs.db
 
+# Generated/auto dirs
+.igris/
+
 # Data — track state files
 # *.json is NOT ignored

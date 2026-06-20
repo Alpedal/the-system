@@ -1,98 +1,109 @@
-# OVERWATCH — MASTER PLAN v0.1.0
+# OVERWATCH — MASTER PLAN v0.2.0
 
-> LÄSORDNING: Denna fil först. Bot-diskussioner i BOT-FEEDBACK längst ner.
-> Bas: Alpedals Dashboard-Plan.md · William + Hermes (oteOS) · 2026-06-20
+> LÄSORDNING: Denna fil först. En levande plan för hela the-system.
+> Konsoliderad 2026-06-20 från: OVERWATCH_MASTER_PLAN v0.1.0 + WEBAPP-PROTOTYPE-PLAN + WILLIAM-COLLAB-PLAN
+> Dashboard-Plan.md (Alpedals pixel-art desktop-vision) är separat — denna plan gäller webb-API + multi-user.
 >
 > **Scope:** Webb-API + Webb-UI för Igris multi-user access.
-> Desktop-appen (Tauri/pixel-art) är Alpedals domän — ej i denna plan.
-
----
-
-## RÖSTNINGSSYSTEM
-
-| Bot | Vikt | Roll i denna plan |
-|-----|------|-------------------|
-| Antigravity | 1 | Orkestrator — helhetsbedömning |
-| Gemini | 1 | Research — teknikval, omvärldsanalys |
-| Hermes | 1 | System audit — filstruktur, skills |
-| Claude Code | 1 | Implementation — kodrealism |
-| **William** | **3** | Slutgiltigt beslut |
-
-**Format:** GODKÄNN / AVVISA / ÄNDRA med motivering.
-Alla GODKÄNN = Låst. Majoritet + William OK = Låst. AVVISA = diskussion krävs.
+> **Desktop-appen (Tauri/pixel-art)** är Alpedals domän — ej i denna plan.
 
 ---
 
 ## 1. NULÄGE
 
-Igris fungerar lokalt på Alpedals RTX 3090. Ollama (qwen2.5-coder:32b).
-Ingen extern access. Overwatch Dashboard är planerat men ej byggt.
+Igris fungerar lokalt på Alpedals RTX 3090 (Ryzen 9 3950X, 64GB RAM). Ollama (qwen2.5-coder:32b).
 
 **Constraint:** RTX 3090 har 24GB VRAM. qwen2.5-coder:32b tar ~19GB.
 5GB kvar för embedding-modell + overhead. Multi-user = kö-system krävs.
 
-### RÖSTOMRÅDE — 1. Nuläge
-> *[Bottar: Är constraint-analysen korrekt? Saknas något?]*
+**Vad finns redan:**
+- Igris Core: orchestrator, GPU manager, contract validator, CLI
+- FastAPI-skelett: health, agents, GPU endpoints — routar men ej kopplat till Igris Core
+- Webb-UI prototyp (`web/`): dark dashboard med mockdata, charts, donuts
+- 6 sketches i Overwatch/: 3 kasserade (001-003), 3 Solo Leveling (004-006)
+- 778 skills (754 security + 14 superpowers + 7 core + 3 agent-defs)
+- 83 tester (6 testfiler)
+- Git: master branch, senaste commit `35e3f03`
+
+**Saknas för multi-user:**
+- WebSocket för live agent-status
+- Ollama-proxy via API
+- Token-auth mot riktig backend
+- Queue-system för singel-GPU
+- Webb-UI mot riktig data (ej mock)
 
 ---
 
-## 2. MÅL — WEBBAPP-PROTOTYP
+## 2. SAMARBETE — William + Alpedal + Änner
 
-En prototyp som låter 2-3 användare nå Igris via webbläsare:
-
-1. **FastAPI-server** på Alpedals maskin — proxy mot Ollama + Igris Core
-2. **WebSocket** — live agent-status, GPU-telemetri
-3. **Token-auth** — enkel API-nyckel per användare
-4. **Webb-UI** — chattgränssnitt + agentöversikt
-5. **Rate limiting** — en aktiv request åt gången (singel-GPU)
-
-### RÖSTOMRÅDE — 2. Mål
-> *[Bottar: Rätt scope för prototyp? Något som borde vara MED eller UT?]*
-
----
-
-## 3. ARKITEKTUR
+### 2.1 Arkitekturmål
 
 ```
-Alpedals maskin (RTX 3090)
-┌─────────────────────────────────────────┐
-│  Ollama :11434                           │
-│    ├── qwen2.5-coder:32b (19GB VRAM)    │
-│    ├── llama3.1:8b (4.9GB VRAM)         │
-│    └── bge-m3:latest (1.2GB VRAM)       │
-│                                          │
-│  Igris Core (orchestrator)              │
-│         │                                │
-│  ┌──────▼──────┐                        │
-│  │  FastAPI     │  ← NY: port 8000       │
-│  │  /ws (live)  │                        │
-│  │  /chat       │                        │
-│  │  /agents     │                        │
-│  │  /gpu        │                        │
-│  └──────┬──────┘                        │
-└─────────┼───────────────────────────────┘
-          │  HTTPS (Cloudflare Tunnel)
-    ┌─────┼─────┐
-    ▼     ▼     ▼
-  Webbläsare (William, Alpedal, +1)
+┌─────────────────────────────────────────────────┐
+│              Superdator (Alpedal)                │
+│                                                  │
+│  ┌──────────┐   ┌──────────────────────────┐    │
+│  │  Ollama   │   │    Igris Core             │    │
+│  │  :11434   │◄──┤    (Orchestrator)         │    │
+│  └──────────┘   └──────────┬───────────────┘    │
+│                             │                    │
+│                    ┌────────▼──────────┐         │
+│                    │   Igris API        │         │
+│                    │   (FastAPI :8000)  │         │
+│                    └────────┬──────────┘         │
+│                             │                    │
+└─────────────────────────────┼────────────────────┘
+                              │ HTTPS / tunnel
+              ┌───────────────┼───────────────┐
+              │               │               │
+         ┌────▼────┐    ┌────▼────┐    ┌────▼────┐
+         │ William  │    │ Alpedal │    │ Änne X  │
+         │ (Web UI) │    │ (Web UI)│    │ (Web UI)│
+         └─────────┘    └─────────┘    └─────────┘
 ```
 
-**Tekniska val:**
-- FastAPI — Python, samma miljö som Igris
-- WebSocket — inbyggt i FastAPI, inget extra bibliotek
-- Cloudflare Tunnel — gratis, ingen port forwarding
-- SQLite — token-storage, request-kö (ingen PostgreSQL för prototyp)
+### 2.2 Git-workflow
 
-### RÖSTOMRÅDE — 3. Arkitektur
-> *[Bottar: Cloudflare Tunnel vs SSH tunnel vs VPN? SQLite tillräckligt?]*
+1. Alpedal äger `main` (superdatorn)
+2. William + andra jobbar i feature-branches
+3. PR → Alpedal reviewar → merge
+
+### 2.3 SSH-nyckel (William)
+
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIxBBVHnU6mHngCPqtcns3zfpNHfOre36DwnzmJ7ABfW williamahlstrom76@gmail.com
+```
 
 ---
 
-## 4. DESIGNREGLER — WEBB-UI
+## 3. DESIGN — SKETCHES
 
-Gäller ALLA vyer i webbgränssnittet. LÄS FÖRE ALLT UI-ARBETE.
+6 varianter finns i `Overwatch/sketches/`.
 
-### 4.1 Färger
+### Round 1 (kasserade — fel universum)
+| # | Namn | Varför kass |
+|---|------|-------------|
+| 001 | Calm Editorial | Linear/Stripe — inte Solo Leveling |
+| 002 | Operator Dense | Grafana-dashboard — inte Solo Leveling |
+| 003 | Living Machine | Partiklar — inte Solo Leveling |
+
+### Round 2 — Solo Leveling
+
+| Dimension | 004 Solo System | 005 Solo HUD | 006 Shadow Commander |
+|-----------|----------------|-------------|---------------------|
+| Kärna | System-rutor + stat-block | Gaming HUD + inventory | Shadow Army fantasy |
+| Layout | Chat vänster + sidepanel | 3-kolumn: inventory/chat/stats | Sidebar soldater + transmissioner |
+| Färg | Blå neon (#6366f1) | Lila/violett (#8b5cf6) | Violet + guld |
+| Agent-visning | Rankad lista (S/A/B) | Inventory slots 2x grid | Soldatlista med klass |
+| Chatt | System-popups | Command prompt (> ) | Transmissioner |
+| GPU | Sidepanel | Stats-panel | "MANA" bar |
+| Level | Stats (STR/AGI/INT/PER) | HP/MP bars + LVL badge | Rank S · LV.23 |
+| Quest | Quest-logg | Miniquests | Dagliga ordrar |
+| Känsla | Manhwa-läsarens UI | RPG-spelarens UI | Jinwoo's krigsrum |
+
+**Rekommendation:** 004 Solo System som bas. Låna HP/MP-bars från 005 och transmissioner från 006.
+
+### Designregler (gäller ALLT webb-UI)
 
 | Roll | Värde | Användning |
 |------|-------|------------|
@@ -105,48 +116,45 @@ Gäller ALLA vyer i webbgränssnittet. LÄS FÖRE ALLT UI-ARBETE.
 | Grön | `#44ff44` | Active/success |
 | Röd | `#ff4444` | Error/blocked |
 
-### 4.2 Typografi
+**Anti-mönster:** ALDRIG `#FFFFFF`, ALDRIG emojis som UI-element, ALDRIG gradienter, ALDRIG box-shadow, ALDRIG rundade hörn > 4px, INGA animationer som blockerar, INGA ljusa teman.
 
-| Roll | Typsnitt | Vikt | Storlek |
-|------|---------|------|---------|
-| Headers | Inter | 600 | 18-24px |
-| Body | Inter | 400 | 14px |
-| Code | JetBrains Mono | 400 | 13px |
-| Agent-namn | Inter | 500 | 14px |
+---
 
-### 4.3 Anti-mönster
+## 4. SPIKES — TEKNISK VALIDERING
 
-- ALDRIG `#FFFFFF` — använd Bone White `#e3e3e4`
-- ALDRIG emojis som UI-element
-- ALDRIG gradienter
-- ALDRIG box-shadow på kort
-- ALDRIG rundade hörn > 4px
-- INGA animationer som blockerar interaktion
-- INGA ljusa teman
+Körs INNAN implementation. En spike per teknisk risk.
 
-### RÖSTOMRÅDE — 4. Designregler
-> *[Bottar: Färgpalett OK? Saknas något anti-mönster?]*
+| # | Spike | Fråga | Risk | Mapp |
+|---|-------|-------|------|------|
+| 001 | websocket-streaming | FastAPI WS → pusha data till klient? | Hög | `Overwatch/spikes/001/` |
+| 002 | ollama-proxy | Proxy:a Ollama via API? Behålls streaming? | Hög | `Overwatch/spikes/002/` |
+| 003 | multi-user-tokens | Token-generering + validering funkar? | Medium | `Overwatch/spikes/003/` |
+| 004 | gpu-telemetri | Läs nvidia-ml-py och streama? | Medium | `Overwatch/spikes/004/` |
+
+**Spike-format:** Varje spike får `README.md` med:
+- Given/When/Then
+- Kod (throwaway, <100 rader)
+- Verdict: VALIDATED / PARTIAL / INVALIDATED
 
 ---
 
 ## 5. IMPLEMENTATIONSFASER
 
-Varje fas = Definition of Done. Nästa fas startar EFTER att föregående är GODKÄND.
+Varje fas = Definition of Done. Nästa fas startar EFTER att föregående är klar.
 
-### Fas 1 — API-skelett (2-3 dagar)
+### Fas 1 — API-skelett (KLAR — kräver review)
 
-| # | Task | Fil(er) | Verifiering |
-|---|------|---------|-------------|
-| 1.1 | FastAPI-app + health endpoint | `igris/api/main.py` | `curl :8000/health` → `{"status":"ok"}` |
-| 1.2 | Token-auth middleware | `igris/api/auth.py` | `curl :8000/agents` utan token → 401 |
-| 1.3 | /agents endpoint (mock-data) | `igris/api/routes/agents.py` | Returnerar JSON-lista med 5 agenter |
-| 1.4 | /gpu endpoint (verklig data) | `igris/api/routes/gpu.py` | Anropa nvidia-ml-py, returnera VRAM |
-| 1.5 | WebSocket /ws (agent-status) | `igris/api/ws.py` | `wscat :8000/ws` → ping/pong |
+| # | Task | Fil(er) | Status |
+|---|------|---------|--------|
+| 1.1 | FastAPI-app + health endpoint | `igris/api/main.py`, `routes/health.py` | KLAR |
+| 1.2 | Token-auth middleware | `igris/api/auth.py` | KLAR |
+| 1.3 | /agents endpoint (mock-data) | `igris/api/routes/agents.py` | KLAR |
+| 1.4 | /gpu endpoint (nvidia-ml-py) | `igris/api/routes/gpu.py` | KLAR |
+| 1.5 | WebSocket /ws | `igris/api/ws.py` | SAKNAS |
 
-**DoD Fas 1:** Alla 5 endpoints svarar. Auth nekar ogiltig token.
-**Spikes som måste köras först:** 001 (websocket), 003 (auth), 004 (gpu-telemetri)
+**TODO:** WS saknas. Auth och data måste verifieras mot Igris Core.
 
-### Fas 2 — Igris-integration (3-4 dagar)
+### Fas 2 — Igris-integration (NÄSTA)
 
 | # | Task | Fil(er) | Verifiering |
 |---|------|---------|-------------|
@@ -156,160 +164,98 @@ Varje fas = Definition of Done. Nästa fas startar EFTER att föregående är GO
 | 2.4 | Rate limiting per token | `igris/api/middleware/rate_limit.py` | 3 requests inom 1s → 429 |
 
 **DoD Fas 2:** Igris svarar via API. WS pushar live-data. Kö hanterar GPU.
-**Spikes som måste köras först:** 002 (ollama-proxy)
 
-### Fas 3 — Webb-UI (4-5 dagar)
+### Fas 3 — Webb-UI mot riktig data
 
 | # | Task | Fil(er) | Verifiering |
 |---|------|---------|-------------|
-| 3.1 | HTML/CSS-sketch (3 varianter) | `Overwatch/sketches/` | Öppna i webbläsare → välj vinnare |
-| 3.2 | Bygg vinnaren (ren HTML/JS) | `igris/web/index.html` | Kommunicerar med API:t |
+| 3.1 | Välj design (004/005/006) | - | William öppnar + väljer |
+| 3.2 | Bygg vinnaren (ren HTML/JS) | `igris/web/` | Kommunicerar med API:t |
 | 3.3 | Chattgränssnitt | `igris/web/chat.js` | Skicka meddelande → se svar streama |
 | 3.4 | Agentöversikt med live-status | `igris/web/agents.js` | WS-uppdateringar syns direkt |
 | 3.5 | GPU-bar i realtid | `igris/web/gpu.js` | Visar VRAM-användning live |
 | 3.6 | Token-inloggning | `igris/web/auth.js` | Ange token → spara i localStorage |
 
 **DoD Fas 3:** Användare kan logga in, chatta, se agenter, se GPU-status.
-**Verktyg:** `sketch`-skillen för 3.1. Ren HTML/CSS/JS — inget ramverk i prototyp.
 
 ### Fas 4 — Exponering (1 dag)
 
 | # | Task | Verifiering |
 |---|------|-------------|
-| 4.1 | Cloudflare Tunnel | `cloudflared tunnel` → HTTPS URL |
+| 4.1 | Tunnel (Tailscale/Cloudflare) | HTTPS URL fungerar |
 | 4.2 | Dokumentation för Alpedal | `Overwatch/plans/DEPLOY.md` |
 | 4.3 | Test från Williams maskin | Öppna HTTPS URL → fungerar |
 
-**DoD Fas 4:** William når Igris från sin dator via HTTPS.
-
-### RÖSTOMRÅDE — 5. Faser
-> *[Bottar: Är fasordningen rätt? Saknas någon task? Tidsestimat rimliga?]*
-
 ---
 
-## 6. SPIKES — TEKNISK VALIDERING
-
-Körs INNAN implementation. En spike per teknisk risk.
-
-| # | Spike | Fråga | Mapp |
-|---|-------|-------|------|
-| 001 | websocket-streaming | FastAPI WS → pusha data till klient? | `Overwatch/spikes/001/` |
-| 002 | ollama-proxy | Proxy:a anrop via FastAPI? Behålls streaming? | `Overwatch/spikes/002/` |
-| 003 | multi-user-tokens | Token-generering + validering? | `Overwatch/spikes/003/` |
-| 004 | gpu-telemetri | Läs nvidia-ml-py och streama? | `Overwatch/spikes/004/` |
-
-**Spike-format:** Varje spike får `README.md` med:
-- Given/When/Then
-- Kod (throwaway, <100 rader)
-- Verdict: VALIDATED / PARTIAL / INVALIDATED
-
-### RÖSTOMRÅDE — 6. Spikes
-> *[Bottar: Rätt spikes? Saknas någon teknisk risk?]*
-
----
-
-## 7. FILSTRUKTUR — IGRI-SIDAN
-
-Nya filer att skapa i `igris/`:
+## 6. FILSTRUKTUR — IGRI-SIDAN
 
 ```
 igris/
-├── api/                       ← NY: FastAPI-server
+├── api/                       # FastAPI-server
 │   ├── __init__.py
-│   ├── main.py                ← FastAPI-app + router
-│   ├── auth.py                ← Token-validering
-│   ├── queue.py               ← Request-kö
-│   ├── ws.py                  ← WebSocket-hantering
+│   ├── main.py                # FastAPI-app + router
+│   ├── auth.py                # Token-validering
+│   ├── state.py               # Orchestrator state
+│   ├── queue.py               # Request-kö (NY)
+│   ├── ws.py                  # WebSocket (SAKNAS)
 │   ├── middleware/
-│   │   └── rate_limit.py      ← Rate limiting
+│   │   └── rate_limit.py      # Rate limiting (NY)
 │   └── routes/
-│       ├── agents.py          ← /agents
-│       ├── chat.py            ← /chat (Ollama-proxy)
-│       └── gpu.py             ← /gpu (telemetri)
-├── web/                       ← NY: Webb-UI (statiskt)
-│   ├── index.html
-│   ├── chat.js
-│   ├── agents.js
-│   ├── gpu.js
-│   └── auth.js
-└── ... (befintliga filer orörda)
+│       ├── agents.py          # /agents (finns)
+│       ├── chat.py            # /chat — Ollama-proxy (NY)
+│       ├── gpu.py             # /gpu — telemetri (finns)
+│       └── health.py          # /health (finns)
+├── web/                       # Webb-UI (statiskt)
+│   ├── index.html             # Dashboard (finns — mockdata)
+│   ├── styles.css             # Dark theme (finns)
+│   └── app.js                 # Frontend-logik (finns — mockdata)
+└── ... (core/, models/, cli/ — ORÖRDA)
 ```
 
-Inga ändringar i `igris/core/`, `igris/models/`, `igris/cli/`.
+**Regel:** Inga ändringar i `igris/core/`, `igris/models/`, `igris/cli/`.
 API:t är en READ-ONLY proxy + WebSocket — modifierar inte Igris interna state.
-
-### RÖSTOMRÅDE — 7. Filstruktur
-> *[Bottar: Korrekt separation? Någon fil som borde ligga annorlunda?]*
 
 ---
 
-## 8. BEROENDEN
-
-Nya Python-paket (läggs i `igris/requirements.txt`):
+## 7. BEROENDEN
 
 ```
 fastapi>=0.115
 uvicorn[standard]>=0.34
 websockets>=14
-python-jose[cryptography]>=3.3   # JWT-tokens
+httpx>=0.27
 ```
 
-Inga nya Node.js-beroenden — Webb-UI är ren HTML/CSS/JS.
-
-### RÖSTOMRÅDE — 8. Beroenden
-> *[Bottar: python-jose rätt val för JWT? Alternativ?]*
+Inga Node.js-beroenden — Webb-UI är ren HTML/CSS/JS.
 
 ---
 
-## 9. DESIGNBESLUT — ATT TA
+## 8. DESIGNBESLUT
 
-Frågor som måste besvaras innan Fas 1 startar:
-
-| # | Fråga | Alternativ | Låst? |
-|---|-------|------------|-------|
-| 1 | Webbserver | FastAPI (vald) vs Node/Express | Låst |
-| 2 | Frontend | Ren HTML/JS vs React | Öppen |
-| 3 | Realtid | WebSocket (vald) vs SSE | Låst |
-| 4 | Auth | API-nycklar (vald) vs OAuth | Låst |
-| 5 | Exponering | Cloudflare Tunnel vs SSH tunnel | Öppen |
-
-### RÖSTOMRÅDE — 9. Designbeslut
-> *[Bottar: Är de "låsta" besluten rätt? Vilken av de öppna frågorna bör vi driva?]*
-
----
-
-## BOT-FEEDBACK
-
-> *[Alla bottar: lämna era röster och kommentarer här. Använd formatet nedan.]*
->
-> ```
-> ### RÖST: [BOT-NAMN] — [DATUM]
-> | Sektion | Röst | Motivering / Ändringsförslag |
-> |---------|------|------------------------------|
-> | X. Rubrik | GODKÄNN / AVVISA / ÄNDRA | Text |
-> ```
-
-<!-- BOT-FEEDBACK START -->
-
-### RÖST: Gemini — 2026-06-20
-| Sektion | Röst | Motivering / Ändringsförslag |
-|---------|------|------------------------------|
-| 1. Nuläge | ÄNDRA | VRAM-kalkylen stämmer för qwen2.5:32b, men diagrammet i sektion 3 inkluderar `llama3.1:8b`. Alla tre samtidigt överskrider 24GB. Llama3.1 bör köras på CPU eller bytas mot mindre modell. |
-| 2. Mål | GODKÄNN | Bra scope för prototyp. Rate-limiting på en aktiv request i taget är nödvändigt för singel-GPU. |
-| 3. Arkitektur | ÄNDRA | Föreslår Tailscale istället för Cloudflare Tunnel. Tailscale är säkrare, har lägre latens (P2P) och kräver ingen publik exponering för 2-3 betrodda användare. |
-| 4. Designregler | GODKÄNN | Restriktiva regler är utmärkta för att hålla prototypen snabb, responsiv och enkel att bygga utan ramverk. |
-| 5. Faser | GODKÄNN | Logisk uppdelning och rimliga estimat (10-13 dagar totalt). Bra fokus på spikes först. |
-| 6. Spikes | ÄNDRA | Lägg till en spike för VRAM-belastning/contention för att verifiera hur Ollama reagerar vid samtidiga LLM/embedding-anrop. |
-| 7. Filstruktur | GODKÄNN | Ren separation av api och web utan att störa core. |
-| 8. Beroenden | ÄNDRA | Byt `python-jose` mot `PyJWT`. `python-jose` är föråldrat och ej underhållet. `PyJWT` är standard och underhålls aktivt. |
-| 9. Designbeslut | ÄNDRA | Lås frontend till ren HTML/JS. Överväg SSE istället för WebSocket för telemetri (enklare, auto-reconnect). Prioritera Tailscale framför Cloudflare. |
-
-<!-- BOT-FEEDBACK SLUT -->
+| # | Fråga | Val | Status |
+|---|-------|-----|--------|
+| 1 | Webbserver | FastAPI | Låst |
+| 2 | Frontend | Ren HTML/JS vs React | Öppen — avgörs av sketch |
+| 3 | Realtid | WebSocket vs SSE | Öppen — spike 001 avgör |
+| 4 | Auth | API-nycklar | Låst för prototyp |
+| 5 | Exponering | Tailscale vs Cloudflare | Öppen |
 
 ---
 
 ## ÄNDRINGSLOGG
 
-| Datum | Bot | Ändring | Syfte |
+| Datum | Vem | Ändring | Syfte |
 |-------|-----|---------|-------|
-| 2026-06-20 | Hermes | Skapad | Första utkast från Alpedals Dashboard-Plan.md |
+| 2026-06-20 | Hermes | v0.2.0 | Konsoliderad från 3 planer + Dashboard-Plan referens |
+
+---
+
+## BOT-FEEDBACK (för röstningssystem)
+
+```
+### RÖST: [BOT] — [DATUM]
+| Sektion | Röst | Motivering |
+|---------|------|------------|
+| X. Rubrik | GODKÄNN/AVVISA/ÄNDRA | Text |
+```

@@ -4,7 +4,7 @@ Igris Agent Skills — tools that agents can be equipped with.
 Structure:
   skills/
   ├── caveman.py           Igris-native Caveman Ultra (surgical patches)
-  ├── core/                Caveman skills (7 st)
+  ├── core/                Caveman skills (10 st)
   ├── superpowers/         Superpowers skills (14 st — TDD, code review, etc.)
   ├── security/            Cybersakerhetsskills (754 st)
   └── agents/              Agent-definitioner (3 st)
